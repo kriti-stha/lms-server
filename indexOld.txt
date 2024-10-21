@@ -1,0 +1,47 @@
+const express = require('express')
+const { getMetadata } = require('page-metadata-parser')
+const domino = require('domino')
+const fetch = require('node-fetch')
+const helmet = require('helmet')
+const { default: axios } = require('axios')
+const { dictionaryWord } = require('./configs')
+
+const PORT = process.env.PORT || 3001
+const app = express()
+app.use(helmet())
+
+app.get('/site/info', async (req, res) => {
+  const url = req.query.url
+  try {
+    console.log(`Fetching - ${url}`)
+    const response = await fetch(url)
+    console.log(`Fetched, analysing...`)
+    const html = await response.text()
+    const doc = domino.createWindow(html).document
+    const metadata = getMetadata(doc, url)
+    console.log('done')
+
+    res.json(metadata)
+  } catch (error) {
+    res.status(400).json({ error: 'fetch failed' })
+  }
+})
+
+app.get('/define', async (req, res) => {
+  try {
+    const word = req.query.word
+    console.log(`Getting definition ${word}...`)
+    const response = await axios.get(dictionaryWord(word))
+    const meaning = response.data[0].meanings[0]
+    console.log(`${word} done`)
+
+    res.json(meaning)
+  } catch (err) {
+    console.error(err)
+    res.status(400).json({ err })
+  }
+})
+
+app.listen(PORT, () => {
+  console.log(`Server listening on ${PORT}...`)
+})
