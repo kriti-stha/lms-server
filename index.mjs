@@ -75,6 +75,7 @@ async function run() {
         title: Joi.string().required(),
         description: Joi.string().required(),
         videoUrl: Joi.array().items().required(),
+        courseCode: Joi.string().required(),
       });
 
       const { error } = schema.validate(req.body);
@@ -85,6 +86,7 @@ async function run() {
           title: req.body.title,
           description: req.body.description,
           videoUrl: req.body.videoUrl,
+          courseCode: req.body.courseCode,
         };
 
         await collection.insertOne(course);
@@ -121,44 +123,77 @@ async function run() {
       }
     });
 
-    //POST recently watched course
+    // POST recently watched course
     app.post("/course/recently-viewed", async (req, res) => {
-      const { userId, courseId } = req.body;
-
-      const { error } = recentlyViewedSchema.validate({ userId, courseId });
-      if (error) return res.status(400).send(error.details[0].message);
+      const { userCode, courseCode } = req.body;
+      console.log("HERE IS THE POST REQUEST FOR RV", req.body);
 
       try {
-        await recentlyViewedCollection.insertOne({ userId, courseId });
-        res.status(201).send("Course added to recently viewed successfully!");
+        if (!userCode || !courseCode) {
+          return res
+            .status(400)
+            .send("User code and course code are required.");
+        }
+
+        const result = await recentlyViewedCollection.updateOne(
+          { userCode },
+          { $addToSet: { courseCodes: courseCode } },
+          { upsert: true } // Create a new if it doesn't exist
+        );
+
+        if (result.modifiedCount > 0) {
+          res.status(200).send("Course added to recently viewed successfully!");
+        } else {
+          res
+            .status(200)
+            .send("Course already in recently viewed or added successfully!");
+        }
       } catch (error) {
         console.error("Error adding recently viewed course:", error);
         res.status(500).send("Error adding recently viewed course");
       }
     });
 
-    // GET recently watched course
-    app.get("/course/recently-viewed", async (req, res) => {
-      const userId = req.query.userId;
+    // GET recently viewed courses
+    app.get("/course/recently-viewed/:userCode", async (req, res) => {
+      const { userCode } = req.params;
+      console.log("Fetching recently viewed courses for user:", userCode);
 
       try {
-        const recentlyViewed = await recentlyViewedCollection
-          .find({ userId })
-          .toArray();
+        const userWatchedCollection = await recentlyViewedCollection.findOne({
+          userCode,
+        });
 
-        const courseIds = recentlyViewed.map(
-          (viewedCourse) => viewedCourse.courseId
-        );
-        const courses = await coursesCollection
-          .find({
-            _id: { $in: courseIds.map((id) => new MongoClient.ObjectId(id)) },
-          })
-          .toArray();
+        if (!userWatchedCollection) {
+          return res.status(404).send("No recently viewed courses!");
+        }
 
-        res.status(200).json(courses);
+        res
+          .status(200)
+          .json({ courseCodes: userWatchedCollection.courseCodes });
       } catch (error) {
         console.error("Error fetching recently viewed courses:", error);
         res.status(500).send("Error fetching recently viewed courses");
+      }
+    });
+
+    //GET course based on courseCode
+    app.get("/course/:courseCode", async (req, res) => {
+      const { courseCode } = req.params;
+      console.log("Fetching course information for courseCode:", courseCode);
+
+      try {
+        const course = await collection.findOne({
+          courseCode: courseCode,
+        });
+
+        if (!course) {
+          return res.status(404).send("Course not found.");
+        }
+        res.status(200).json(course);
+      } catch (error) {
+        console.error("Error fetching course information:", error);
+        res.status(500).send("Error fetching course information");
       }
     });
   } catch (error) {
