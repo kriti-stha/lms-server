@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 app.use(helmet());
 
-let db, collection;
+let db, collection, recentlyViewedCollection;
 
 const dictionaryWord = (word) =>
   `https://api.dictionaryapi.dev/api/v2/entries/en_US/${word}`;
@@ -67,6 +67,9 @@ async function run() {
 
     db = client.db("LMS");
     collection = db.collection("Courses");
+    recentlyViewedCollection = db.collection("RecentlyViewed");
+
+    //POST a new course
     app.post("/course", async (req, res) => {
       const schema = Joi.object({
         title: Joi.string().required(),
@@ -92,6 +95,7 @@ async function run() {
       }
     });
 
+    //GET all courses
     app.get("/course", async (req, res) => {
       try {
         const courses = await collection.find({}).toArray();
@@ -99,6 +103,62 @@ async function run() {
       } catch (error) {
         console.error("Error fetching courses:", error);
         res.status(500).send("Error fetching courses");
+      }
+    });
+
+    //GET course by title
+    app.get("/course/search", async (req, res) => {
+      const searchTerm = req.query.searchTerm || "";
+      try {
+        const courses = await collection
+          .find({ title: { $regex: searchTerm, $options: "i" } }) //i is for case insensitivity
+          .toArray();
+
+        res.status(200).json(courses);
+      } catch (error) {
+        console.error("Error searching courses:", error);
+        res.status(500).send("Error searching courses");
+      }
+    });
+
+    //POST recently watched course
+    app.post("/course/recently-viewed", async (req, res) => {
+      const { userId, courseId } = req.body;
+
+      const { error } = recentlyViewedSchema.validate({ userId, courseId });
+      if (error) return res.status(400).send(error.details[0].message);
+
+      try {
+        await recentlyViewedCollection.insertOne({ userId, courseId });
+        res.status(201).send("Course added to recently viewed successfully!");
+      } catch (error) {
+        console.error("Error adding recently viewed course:", error);
+        res.status(500).send("Error adding recently viewed course");
+      }
+    });
+
+    // GET recently watched course
+    app.get("/course/recently-viewed", async (req, res) => {
+      const userId = req.query.userId;
+
+      try {
+        const recentlyViewed = await recentlyViewedCollection
+          .find({ userId })
+          .toArray();
+
+        const courseIds = recentlyViewed.map(
+          (viewedCourse) => viewedCourse.courseId
+        );
+        const courses = await coursesCollection
+          .find({
+            _id: { $in: courseIds.map((id) => new MongoClient.ObjectId(id)) },
+          })
+          .toArray();
+
+        res.status(200).json(courses);
+      } catch (error) {
+        console.error("Error fetching recently viewed courses:", error);
+        res.status(500).send("Error fetching recently viewed courses");
       }
     });
   } catch (error) {
