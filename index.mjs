@@ -29,15 +29,13 @@ app.get("/site/info", async (req, res) => {
   const url = req.query.url;
   try {
     console.log(`Fetching - ${url}`);
-    const response = await fetch(url);
-    console.log({ response });
-    console.log("HERE IS THE REQ BODY==>", { req });
 
-    console.log(`Fetched, analysing...`);
+    const response = await fetch(url);
+
+    console.log("SITE/INFO RESPONSE==>", { response, url });
     const html = await response.text();
     const doc = domino.createWindow(html).document;
     const metadata = getMetadata(doc, url);
-    console.log("done");
 
     res.json(metadata);
   } catch (error) {
