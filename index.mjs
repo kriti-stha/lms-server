@@ -231,6 +231,46 @@ async function run() {
       }
     });
 
+    app.get("/course/video", async (req, res) => {
+      try {
+        const videoCourses = await video_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
+    app.get("/course/pdf", async (req, res) => {
+      try {
+        const videoCourses = await pdf_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
+    app.get("/course/text", async (req, res) => {
+      try {
+        const videoCourses = await text_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+    
+    app.get("/course/youtube", async (req, res) => {
+      try {
+        const videoCourses = await youtube_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
     //GET course by title
     app.get("/course/search", async (req, res) => {
       const searchTerm = req.query.searchTerm || "";
