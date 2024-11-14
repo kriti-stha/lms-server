@@ -118,6 +118,7 @@ async function run() {
       title: Joi.string().required(),
       description: Joi.string().required(),
       courseCode: Joi.string().required(),
+      imageUrl: Joi.array().items(),
     };
 
     // Endpoint for video uploads
@@ -136,6 +137,7 @@ async function run() {
           description: req.body.description,
           courseCode: req.body.courseCode,
           videoUrl: req.body.videoUrl,
+          imageUrl: req.body.imageUrl,
         };
         await video_courses.insertOne(course);
         res.status(201).send("Video course added successfully!");
@@ -161,6 +163,7 @@ async function run() {
           description: req.body.description,
           courseCode: req.body.courseCode,
           pdf: req.body.pdf,
+          imageUrl: req.body.imageUrl,
         };
         await pdf_courses.insertOne(course);
         res.status(201).send("PDF course added successfully!");
@@ -186,6 +189,7 @@ async function run() {
           description: req.body.description,
           courseCode: req.body.courseCode,
           youtubeLink: req.body.youtubeLink,
+          imageUrl: req.body.imageUrl,
         };
         await youtube_courses.insertOne(course);
         res.status(201).send("YouTube link course added successfully!");
@@ -211,6 +215,7 @@ async function run() {
           description: req.body.description,
           courseCode: req.body.courseCode,
           courseTextContent: req.body.courseTextContent,
+          imageUrl: req.body.imageUrl,
         };
         await text_courses.insertOne(course);
         res.status(201).send("Text course added successfully!");
@@ -260,7 +265,7 @@ async function run() {
         res.status(500).send("Error fetching video courses");
       }
     });
-    
+
     app.get("/course/youtube", async (req, res) => {
       try {
         const videoCourses = await youtube_courses.find({}).toArray();
