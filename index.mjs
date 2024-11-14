@@ -121,107 +121,59 @@ async function run() {
       imageUrl: Joi.array().items(),
     };
 
-    // Endpoint for video uploads
-    app.post("/course/video", async (req, res) => {
-      const schema = Joi.object({
-        ...baseSchema,
-        videoUrl: Joi.array().items().required(),
-      });
-
-      const { error } = schema.validate(req.body);
-      if (error) return res.status(400).send(error.details[0].message);
-
+    // GET video courses with searchTerm
+    app.get("/course/video", async (req, res) => {
+      const searchTerm = req.query.searchTerm || "";
       try {
-        const course = {
-          title: req.body.title,
-          description: req.body.description,
-          courseCode: req.body.courseCode,
-          videoUrl: req.body.videoUrl,
-          imageUrl: req.body.imageUrl,
-        };
-        await video_courses.insertOne(course);
-        res.status(201).send("Video course added successfully!");
+        const videoCourses = await video_courses
+          .find({ title: { $regex: searchTerm, $options: "i" } })
+          .toArray();
+        res.status(200).json(videoCourses);
       } catch (error) {
-        console.error("Error adding video course:", error);
-        res.status(500).send("Error adding video course");
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
       }
     });
 
-    // Endpoint for PDF uploads
-    app.post("/course/pdf", async (req, res) => {
-      const schema = Joi.object({
-        ...baseSchema,
-        pdf: Joi.array().items().required(),
-      });
-
-      const { error } = schema.validate(req.body);
-      if (error) return res.status(400).send(error.details[0].message);
-
+    // GET PDF courses with searchTerm
+    app.get("/course/pdf", async (req, res) => {
+      const searchTerm = req.query.searchTerm || "";
       try {
-        const course = {
-          title: req.body.title,
-          description: req.body.description,
-          courseCode: req.body.courseCode,
-          pdf: req.body.pdf,
-          imageUrl: req.body.imageUrl,
-        };
-        await pdf_courses.insertOne(course);
-        res.status(201).send("PDF course added successfully!");
+        const pdfCourses = await pdf_courses
+          .find({ title: { $regex: searchTerm, $options: "i" } })
+          .toArray();
+        res.status(200).json(pdfCourses);
       } catch (error) {
-        console.error("Error adding PDF course:", error);
-        res.status(500).send("Error adding PDF course");
+        console.error("Error fetching PDF courses:", error);
+        res.status(500).send("Error fetching PDF courses");
       }
     });
 
-    // Endpoint for YouTube link uploads
-    app.post("/course/youtube", async (req, res) => {
-      const schema = Joi.object({
-        ...baseSchema,
-        youtubeLink: Joi.string().required(),
-      });
-
-      const { error } = schema.validate(req.body);
-      if (error) return res.status(400).send(error.details[0].message);
-
+    // GET text courses with searchTerm
+    app.get("/course/text", async (req, res) => {
+      const searchTerm = req.query.searchTerm || "";
       try {
-        const course = {
-          title: req.body.title,
-          description: req.body.description,
-          courseCode: req.body.courseCode,
-          youtubeLink: req.body.youtubeLink,
-          imageUrl: req.body.imageUrl,
-        };
-        await youtube_courses.insertOne(course);
-        res.status(201).send("YouTube link course added successfully!");
+        const textCourses = await text_courses
+          .find({ title: { $regex: searchTerm, $options: "i" } })
+          .toArray();
+        res.status(200).json(textCourses);
       } catch (error) {
-        console.error("Error adding YouTube link course:", error);
-        res.status(500).send("Error adding YouTube link course");
+        console.error("Error fetching text courses:", error);
+        res.status(500).send("Error fetching text courses");
       }
     });
 
-    // Endpoint for text uploads
-    app.post("/course/text", async (req, res) => {
-      const schema = Joi.object({
-        ...baseSchema,
-        courseTextContent: Joi.string().required(),
-      });
-
-      const { error } = schema.validate(req.body);
-      if (error) return res.status(400).send(error.details[0].message);
-
+    // GET YouTube courses with searchTerm
+    app.get("/course/youtube", async (req, res) => {
+      const searchTerm = req.query.searchTerm || "";
       try {
-        const course = {
-          title: req.body.title,
-          description: req.body.description,
-          courseCode: req.body.courseCode,
-          courseTextContent: req.body.courseTextContent,
-          imageUrl: req.body.imageUrl,
-        };
-        await text_courses.insertOne(course);
-        res.status(201).send("Text course added successfully!");
+        const youtubeCourses = await youtube_courses
+          .find({ title: { $regex: searchTerm, $options: "i" } })
+          .toArray();
+        res.status(200).json(youtubeCourses);
       } catch (error) {
-        console.error("Error adding text course:", error);
-        res.status(500).send("Error adding text course");
+        console.error("Error fetching YouTube courses:", error);
+        res.status(500).send("Error fetching YouTube courses");
       }
     });
 
