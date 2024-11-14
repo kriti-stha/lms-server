@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import express from "express";
+import express, { text } from "express";
 import cors from "cors";
 import Joi from "joi";
 import { MongoClient } from "mongodb";
@@ -8,7 +8,6 @@ import fetch from "node-fetch";
 import helmet from "helmet";
 import axios from "axios";
 import { getMetadata } from "page-metadata-parser";
-
 dotenv.config();
 
 const app = express();
@@ -20,7 +19,13 @@ app.use(cors());
 app.use(express.json());
 app.use(helmet());
 
-let db, collection, recentlyViewedCollection;
+let db,
+  collection,
+  video_courses,
+  pdf_courses,
+  text_courses,
+  youtube_courses,
+  recentlyViewedCollection;
 
 const dictionaryWord = (word) =>
   `https://api.dictionaryapi.dev/api/v2/entries/en_US/${word}`;
@@ -31,15 +36,14 @@ app.get("/site/info", async (req, res) => {
     console.log(`Fetching - ${url}`);
 
     const response = await fetch(url);
-
-    console.log("SITE/INFO RESPONSE==>", { response, url });
     const html = await response.text();
     const doc = domino.createWindow(html).document;
     const metadata = getMetadata(doc, url);
 
+    console.log({ metadata, html, response });
     res.json(metadata);
   } catch (error) {
-    res.status(400).json({ error: "fetch failed" });
+    res.status(400).json(error);
   }
 });
 
@@ -65,15 +69,63 @@ async function run() {
 
     db = client.db("LMS");
     collection = db.collection("Courses");
+    video_courses = db.collection("courses_video");
+    pdf_courses = db.collection("courses_pdf");
+    text_courses = db.collection("courses_text");
+    youtube_courses = db.collection("courses_youtube");
+
     recentlyViewedCollection = db.collection("RecentlyViewed");
 
     //POST a new course
-    app.post("/course", async (req, res) => {
+    // app.post("/course", async (req, res) => {
+    //   const schema = Joi.object({
+    //     title: Joi.string().required(),
+    //     description: Joi.string().required(),
+    //     videoUrl: Joi.array().items(),
+    //     courseCode: Joi.string().required(),
+    //     pdf: Joi.array().items(),
+    //     youtubeLink: Joi.string(),
+    //     text: Joi.string(),
+    //   }).or("pdf", "videoUrl", "text", "youtubeLink"); //atleast one of the 4 must not be empty
+
+    //   const { error } = schema.validate(req.body);
+    //   if (error) return res.status(400).send(error.details[0].message);
+
+    //   try {
+    //     const isVideoUpload = !!req.body.videoUrl;
+    //     const isPdfUpload = !!req.body.pdf;
+    //     const isYoutubeLinkUpload = !!req.body.youtubeLink;
+    //     const isTextUpload = !!req.body.text;
+
+    //     const course = {
+    //       title: req.body.title,
+    //       description: req.body.description,
+    //       videoUrl: req.body.videoUrl,
+    //       courseCode: req.body.courseCode,
+    //       pdf: req.body.pdf,
+    //       youtubeLink: req.body.youtubeLink,
+    //       courseCode: req.body.courseCode,
+    //     };
+
+    //     await collection.insertOne(course);
+    //     res.status(201).send("Course added successfully!");
+    //   } catch (error) {
+    //     console.error("Error adding course:", error);
+    //     res.status(500).send("Error adding course");
+    //   }
+    // });
+    const baseSchema = {
+      title: Joi.string().required(),
+      description: Joi.string().required(),
+      courseCode: Joi.string().required(),
+      imageUrl: Joi.array().items(),
+    };
+
+    // Endpoint for video uploads
+    app.post("/course/video", async (req, res) => {
       const schema = Joi.object({
-        title: Joi.string().required(),
-        description: Joi.string().required(),
+        ...baseSchema,
         videoUrl: Joi.array().items().required(),
-        courseCode: Joi.string().required(),
       });
 
       const { error } = schema.validate(req.body);
@@ -83,15 +135,93 @@ async function run() {
         const course = {
           title: req.body.title,
           description: req.body.description,
-          videoUrl: req.body.videoUrl,
           courseCode: req.body.courseCode,
+          videoUrl: req.body.videoUrl,
+          imageUrl: req.body.imageUrl,
         };
-
-        await collection.insertOne(course);
-        res.status(201).send("Course added successfully!");
+        await video_courses.insertOne(course);
+        res.status(201).send("Video course added successfully!");
       } catch (error) {
-        console.error("Error adding course:", error);
-        res.status(500).send("Error adding course");
+        console.error("Error adding video course:", error);
+        res.status(500).send("Error adding video course");
+      }
+    });
+
+    // Endpoint for PDF uploads
+    app.post("/course/pdf", async (req, res) => {
+      const schema = Joi.object({
+        ...baseSchema,
+        pdf: Joi.array().items().required(),
+      });
+
+      const { error } = schema.validate(req.body);
+      if (error) return res.status(400).send(error.details[0].message);
+
+      try {
+        const course = {
+          title: req.body.title,
+          description: req.body.description,
+          courseCode: req.body.courseCode,
+          pdf: req.body.pdf,
+          imageUrl: req.body.imageUrl,
+        };
+        await pdf_courses.insertOne(course);
+        res.status(201).send("PDF course added successfully!");
+      } catch (error) {
+        console.error("Error adding PDF course:", error);
+        res.status(500).send("Error adding PDF course");
+      }
+    });
+
+    // Endpoint for YouTube link uploads
+    app.post("/course/youtube", async (req, res) => {
+      const schema = Joi.object({
+        ...baseSchema,
+        youtubeLink: Joi.string().required(),
+      });
+
+      const { error } = schema.validate(req.body);
+      if (error) return res.status(400).send(error.details[0].message);
+
+      try {
+        const course = {
+          title: req.body.title,
+          description: req.body.description,
+          courseCode: req.body.courseCode,
+          youtubeLink: req.body.youtubeLink,
+          imageUrl: req.body.imageUrl,
+        };
+        await youtube_courses.insertOne(course);
+        res.status(201).send("YouTube link course added successfully!");
+      } catch (error) {
+        console.error("Error adding YouTube link course:", error);
+        res.status(500).send("Error adding YouTube link course");
+      }
+    });
+
+    // Endpoint for text uploads
+    app.post("/course/text", async (req, res) => {
+      const schema = Joi.object({
+        ...baseSchema,
+        courseTextContent: Joi.string().required(),
+      });
+
+      const { error } = schema.validate(req.body);
+      if (error) return res.status(400).send(error.details[0].message);
+
+      try {
+        const course = {
+          title: req.body.title,
+          description: req.body.description,
+          courseCode: req.body.courseCode,
+          courseTextContent: req.body.courseTextContent,
+          imageUrl: req.body.imageUrl,
+        };
+        await text_courses.insertOne(course);
+        res.status(201).send("Text course added successfully!");
+      } catch (error) {
+        console.error("Error adding text course:", error);
+        res.status(500).send("Error adding text course");
       }
     });
 
@@ -103,6 +233,46 @@ async function run() {
       } catch (error) {
         console.error("Error fetching courses:", error);
         res.status(500).send("Error fetching courses");
+      }
+    });
+
+    app.get("/course/video", async (req, res) => {
+      try {
+        const videoCourses = await video_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
+    app.get("/course/pdf", async (req, res) => {
+      try {
+        const videoCourses = await pdf_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
+    app.get("/course/text", async (req, res) => {
+      try {
+        const videoCourses = await text_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
+      }
+    });
+
+    app.get("/course/youtube", async (req, res) => {
+      try {
+        const videoCourses = await youtube_courses.find({}).toArray();
+        res.status(200).json(videoCourses);
+      } catch (error) {
+        console.error("Error fetching video courses:", error);
+        res.status(500).send("Error fetching video courses");
       }
     });
 
